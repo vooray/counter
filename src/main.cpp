@@ -7,11 +7,12 @@
 
 unsigned long millis_prev = 0;
 unsigned long loop_length = 1; // ms.
-unsigned long second_counter = 0;
-unsigned long prep_time = 30;
-int round_time = 180; // Round length (s)
-
-uint8_t round_counter = 0;
+unsigned long loop_counter = 0;
+unsigned long prep_time = 15;
+unsigned long round_time = 180; // Round length (s)
+unsigned long dn_time = 60;     // Down time
+bool dn_flag = false;           // Down time flag
+uint8_t round_counter = 1;
 uint8_t round_max = 3; // Maximum rounds
 
 TM1637Display display(CLK, DIO);
@@ -30,91 +31,64 @@ void DisplayTime(unsigned long *seconds)
   Serial.printf("Minutes: %i\tSeconds: %i\n", min, sec);
 }
 
-void loop()
-{
-  if (millis() >= (millis_prev + loop_length))
-  {
-    millis_prev = millis();
-    
-    if (second_counter < prep_time){
-      Serial.printf("Prep:\t");
-      DisplayTime(&second_counter);
-    }
-    else{
-      Serial.printf("Main:\t");
-      if (round_counter < round_max){
-        
-      }
-    }
-
-    second_counter++;
-  }
+void BeepRun(){
+  tone(BUZZER, 1000, 1000);
 }
 
-/*
-void old_loop()
+void loop()
 {
   if (millis() >= (millis_prev + loop_length))
   {
     millis_prev = millis();
 
     // prepare time
-    if (prep_flag)
+    if (prep_time > 0)
     {
+      Serial.printf("Prep:\t");
+      prep_time--;
+      DisplayTime(&loop_counter);
     }
-
-    // down time
-    if (dn_flag)
+    // main time
+    //// down time
+    else if (dn_flag)
     {
-      Serial.printf("Down: \t");
-
-      if (second_counter == dn_seconds)
+      if (loop_counter < dn_time)
       {
-        second_counter = 0;
-        dn_flag = false;
-        Serial.printf("Down time is over!\n");
+        Serial.printf("Down time!\t");
+        DisplayTime(&loop_counter);
+        loop_counter++;
       }
       else
       {
-        DisplayTime(&minute_counter, &second_counter);
+        dn_flag = false;
+        loop_counter = 0;
       }
-      second_counter++;
     }
-    // up time
+    //// up time
     else
     {
-      Serial.printf("Up.\t Round %i.\t", (round_counter + 1));
-
-      if (second_counter == 60) // todo: work only with seconds. Get minuts from dividing
+      if (round_counter < round_max)
       {
-        minute_counter++;
-        second_counter = 0;
-      }
-
-      if (round_counter < round_count_max)
-      {
-        if (minute_counter == round_minutes)
+        if (loop_counter < round_time)
         {
-          dn_flag = true;
-          Serial.printf("Round -=\"%i\"=- time is over!\n", round_counter);
-          round_counter++;
-          minute_counter = 0;
-          second_counter = 0;
+          Serial.printf("Round: %i\t", round_counter);
+          DisplayTime(&loop_counter);
         }
         else
         {
-          DisplayTime(&minute_counter, &second_counter);
-          second_counter++;
+          round_counter++;
+          loop_counter = 0;
+          dn_flag = true;
         }
       }
       else
       {
-        Serial.printf("\n -end!\n");
-        ESP.deepSleepMax();
-        loop_length = 86400000;
-        Serial.printf("Loop length increased to %lu", loop_length);
+        Serial.printf("Done!\n");
+        //BeepRun();
+        delay(60000);
       }
     }
+
+    loop_counter++;
   }
 }
-*/
