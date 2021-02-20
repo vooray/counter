@@ -6,9 +6,9 @@
 #define BUZZER 4
 
 unsigned long millis_prev = 0;
-unsigned long loop_length = 1; // ms.
+unsigned long loop_length = 1000; // ms.
 unsigned long loop_counter = 0;
-unsigned long prep_time = 15;
+unsigned long prep_time = 3;    // Prepare time
 unsigned long round_time = 180; // Round length (s)
 unsigned long dn_time = 60;     // Down time
 bool dn_flag = false;           // Down time flag
@@ -29,10 +29,18 @@ void DisplayTime(unsigned long *seconds)
   uint8_t min = *seconds / 60;
   uint8_t sec = *seconds % 60;
   Serial.printf("Minutes: %i\tSeconds: %i\n", min, sec);
+  display.showNumberDecEx(min, 0b01000000, false, 2, 0);
+  display.showNumberDecEx(sec, 0b01000000, false, 2, 2);
 }
 
-void BeepRun(){
+void BeepRun()
+{
   tone(BUZZER, 1000, 1000);
+}
+
+void BeepPrep()
+{
+  tone(BUZZER, 5000, 100);
 }
 
 void loop()
@@ -47,6 +55,8 @@ void loop()
       Serial.printf("Prep:\t");
       prep_time--;
       DisplayTime(&loop_counter);
+      loop_counter = 0;
+      BeepPrep();
     }
     // main time
     //// down time
@@ -56,7 +66,7 @@ void loop()
       {
         Serial.printf("Down time!\t");
         DisplayTime(&loop_counter);
-        loop_counter++;
+        //loop_counter++;
       }
       else
       {
@@ -67,6 +77,13 @@ void loop()
     //// up time
     else
     {
+      // Beep
+      Serial.printf("--> loop_counter: %lu\t", loop_counter);
+      if (loop_counter == 0)
+      {
+        Serial.printf("Beep");
+        BeepRun();
+      }
       if (round_counter < round_max)
       {
         if (loop_counter < round_time)
