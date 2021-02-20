@@ -1,0 +1,95 @@
+#include <Arduino.h>
+#include "TM1637Display.h"
+
+#define CLK 0
+#define DIO 2
+#define BUZZER 4
+
+uint8_t data[4];
+uint8_t counter_seconds = 0; // default: 0
+uint8_t counter_munites = 0; // default: 0
+uint8_t seconds_max = 60;
+uint8_t dn_seconds = 60; // seconds to rest beetween round
+uint16_t counter_dn_seconds = 0;
+uint8_t minutes_max = 3;
+uint8_t counter_round = 0;
+uint8_t rounds_max = 5;
+unsigned long millis_prev = 0;
+bool dn_flag = false; // down time between rounds
+//unsigned long time_start = 0;
+//uint16_t cycles = 0;
+const uint8_t SEG_DONE[] = {
+    SEG_B | SEG_C | SEG_D | SEG_E | SEG_G,         // d
+    SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F, // O
+    SEG_C | SEG_E | SEG_G,                         // n
+    SEG_A | SEG_D | SEG_E | SEG_F | SEG_G          // E
+};
+
+const uint8_t SEG_DN[] = {
+    SEG_B | SEG_C | SEG_D | SEG_E | SEG_G, // d
+    SEG_C | SEG_E | SEG_G,                 // n
+};
+
+TM1637Display display(CLK, DIO);
+
+void setup()
+{
+  Serial.begin(9600);
+  display.setBrightness(0x00);
+  display.clear();
+}
+
+void display_wait()
+{
+  uint8_t allon[] = {0xff, 0xff, 0xff, 0xff};
+  uint8_t blank[] = {0x00, 0x00, 0x00, 0x00};
+  display.setBrightness(0x00);
+  display.setSegments(blank);
+  delay(500);
+  display.setSegments(allon);
+  delay(500);
+}
+
+void display_counter_with_no_dots(unsigned long counter)
+{
+  display.showNumberDecEx(counter, 0);
+}
+
+void disaply_counter_with_dots(unsigned long counter)
+{
+  display.showNumberDecEx(counter, 0b01000000);
+}
+
+void loop()
+{
+  if (counter_munites == minutes_max)
+  {
+    counter_munites = 0;
+    display.setSegments(SEG_DN, 2, 0);
+    //tone(BUZZER, 1500, 100);
+    //delay(5000);
+  }
+  if (counter_seconds == seconds_max)
+  {
+    counter_munites++;
+    counter_seconds = 0;
+  }
+  if (millis_prev == 0)
+  {
+    millis_prev = millis();
+    counter_seconds++;
+  }
+  if ((millis_prev + 1000) <= millis())
+  {
+    Serial.printf("Current MCU time: %lu\n", millis());
+    millis_prev = millis();
+    display.showNumberDecEx(counter_seconds, 0b01000000, true, 2, 2);
+    display.showNumberDecEx(counter_munites, 0b01000000, true, 2, 0);
+    Serial.printf("Previous MCU time: %lu\n", millis_prev);
+    Serial.printf("Counter seconds: %u\n", counter_seconds);
+    Serial.printf("Counter minutes: %u\n", counter_munites);
+    Serial.println("---");
+    counter_seconds++;
+    //tone(BUZZER, 1500, 500);
+  }
+}
